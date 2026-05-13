@@ -12,24 +12,23 @@ import java.util.Optional;
 
 public class PropertyDAO {
 
-    // Same path the REDataLoader writes to. SQLite is just a file — both apps point at it.
-    private static final String DB_URL =
-        "jdbc:sqlite:/Users/kinseybellerose/Desktop/SydneyExercises/RealEstateServer/realestate.db";
+    // Same Postgres instance the REDataLoader writes to (see docker-compose.yml).
+    private static final String DB_URL  = "jdbc:postgresql://localhost:8000/realestate";
+    private static final String DB_USER = "realestate";
+    private static final String DB_PASS = "realestate";
 
     // HACK: GET /property and GET /property/prices have no pagination, but the table has
     // ~4.85M rows. Returning all of them would OOM the JVM and the HTTP client. We cap the
     // result set so the API still responds. See README for the full discussion.
     private static final int MAX_RESULTS = 1000;
 
-    // One Connection for the life of the DAO. The xerial sqlite-jdbc driver serializes
-    // access internally, so it's safe to share across Javalin's request threads.
     private final Connection conn;
 
     public PropertyDAO() {
         try {
-            this.conn = DriverManager.getConnection(DB_URL);
+            this.conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to open SQLite database at " + DB_URL, e);
+            throw new RuntimeException("Failed to open Postgres database at " + DB_URL, e);
         }
     }
 
@@ -41,7 +40,7 @@ public class PropertyDAO {
             ps.setInt(1, Integer.parseInt(property.propertyID));
             ps.setString(2, property.postcode);
             ps.setLong(3, Long.parseLong(property.propertyPrice));
-            ps.setInt(4, property.forSale ? 1 : 0);   // SQLite has no boolean — store as 0/1
+            ps.setBoolean(4, property.forSale);
             return ps.executeUpdate() == 1;
         } catch (SQLException | NumberFormatException e) {
             System.err.println("newProperty failed: " + e.getMessage());
@@ -148,7 +147,7 @@ public class PropertyDAO {
             rs.getString("post_code"),
             priceStr
         );
-        p.forSale = rs.getInt("for_sale") != 0;
+        p.forSale = rs.getBoolean("for_sale");
         return p;
     }
 }

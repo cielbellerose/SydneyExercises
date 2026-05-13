@@ -1,133 +1,96 @@
 package org.example;
 
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
-import org.apache.commons.csv.CSVRecord;
+import org.postgresql.PGConnection;
+import org.postgresql.copy.CopyManager;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 
 public final class PropertyLoader {
 
     private PropertyLoader() {}
 
-    private static final CSVFormat CSV_FORMAT = CSVFormat.Builder.create(CSVFormat.RFC4180)
-        .setHeader()
-        .setSkipHeaderRecord(true)
-        .setAllowDuplicateHeaderNames(false)
-        .build();
+    private static final String CREATE_STAGE_SQL =
+        "CREATE TEMP TABLE property_stage (" +
+        "  property_id TEXT, download_date TEXT, council_name TEXT, purchase_price TEXT," +
+        "  address TEXT, post_code TEXT, property_type TEXT, strata_lot_number TEXT," +
+        "  property_name TEXT, area TEXT, area_type TEXT, contract_date TEXT," +
+        "  settlement_date TEXT, zoning TEXT, nature_of_property TEXT," +
+        "  primary_purpose TEXT, legal_description TEXT" +
+        ") ON COMMIT DROP";
 
-    // INSERT OR REPLACE = if a row with the same property_id already exists, overwrite it.
-    // Makes the loader idempotent — safe to rerun without UNIQUE constraint errors.
+    private static final String COPY_SQL =
+        "COPY property_stage FROM STDIN WITH (FORMAT csv, HEADER true)";
+
+    // DISTINCT ON + ORDER BY ctid DESC = last occurrence of each property_id in the CSV wins,
+    // matching the original per-row INSERT ... ON CONFLICT DO UPDATE behavior.
+    // Rows with non-integer property_id are filtered out; bad purchase_price / area become NULL.
     private static final String INSERT_SQL =
-        "INSERT OR REPLACE INTO property (" +
+        "INSERT INTO property (" +
         "  property_id, download_date, council_name, purchase_price, address," +
         "  post_code, property_type, strata_lot_number, property_name, area," +
         "  area_type, contract_date, settlement_date, zoning, nature_of_property," +
         "  primary_purpose, legal_description" +
-        ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-
-    // How many rows to buffer in JDBC before flushing to SQLite. Bigger = fewer round-trips
-    // but more JVM memory. 10k is a sweet spot for this dataset.
-    private static final int BATCH_SIZE = 10_000;
+        ") " +
+        "SELECT DISTINCT ON (BTRIM(property_id)::INTEGER) " +
+        "  BTRIM(property_id)::INTEGER," +
+        "  NULLIF(download_date, '')," +
+        "  NULLIF(council_name, '')," +
+        "  CASE WHEN BTRIM(purchase_price) ~ '^-?[0-9]+$' THEN BTRIM(purchase_price)::BIGINT END," +
+        "  NULLIF(address, '')," +
+        "  NULLIF(post_code, '')," +
+        "  NULLIF(property_type, '')," +
+        "  NULLIF(strata_lot_number, '')," +
+        "  NULLIF(property_name, '')," +
+        "  CASE WHEN BTRIM(area) ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN BTRIM(area)::DOUBLE PRECISION END," +
+        "  NULLIF(area_type, '')," +
+        "  NULLIF(contract_date, '')," +
+        "  NULLIF(settlement_date, '')," +
+        "  NULLIF(zoning, '')," +
+        "  NULLIF(nature_of_property, '')," +
+        "  NULLIF(primary_purpose, '')," +
+        "  NULLIF(legal_description, '') " +
+        "FROM property_stage " +
+        "WHERE BTRIM(property_id) ~ '^[0-9]+$' " +
+        "ORDER BY BTRIM(property_id)::INTEGER, ctid DESC";
 
     public static int load(Connection conn, Path csvFilePath) throws SQLException, IOException {
-        clearTable(conn);
-        return bulkInsert(conn, csvFilePath);
-    }
-
-    private static void clearTable(Connection conn) throws SQLException {
-        try (Statement s = conn.createStatement()) {
-            s.execute("DELETE FROM property");
-        }
-    }
-
-    private static int bulkInsert(Connection conn, Path csvFilePath)
-            throws SQLException, IOException {
-        // Turn off auto-commit so the entire load is one transaction. Without this,
-        // every INSERT would be its own transaction with its own disk sync — orders of magnitude slower.
         conn.setAutoCommit(false);
-        int inserted = 0;
-        int skipped = 0;
-
-        try (CSVParser parser = CSVParser.parse(csvFilePath, StandardCharsets.UTF_8, CSV_FORMAT);
-             PreparedStatement ps = conn.prepareStatement(INSERT_SQL)) {
-
-            for (CSVRecord rec : parser) {
-                try {
-                    bindRecord(ps, rec);
-                    ps.addBatch();
-                    inserted++;
-
-                    // Flush in chunks so the JDBC batch buffer doesn't grow unbounded.
-                    if (inserted % BATCH_SIZE == 0) {
-                        ps.executeBatch();
-                    }
-                } catch (NumberFormatException e) {
-                    // Row had unparseable numeric field (e.g. property_id missing). Skip it.
-                    skipped++;
-                }
+        try {
+            try (Statement s = conn.createStatement()) {
+                s.execute(CREATE_STAGE_SQL);
+                s.execute("DELETE FROM property");
             }
-            ps.executeBatch();   // flush whatever is left in the last partial batch
-            conn.commit();       // commit the single big transaction
+
+            long staged;
+            CopyManager copy = conn.unwrap(PGConnection.class).getCopyAPI();
+            try (Reader r = Files.newBufferedReader(csvFilePath, StandardCharsets.UTF_8)) {
+                staged = copy.copyIn(COPY_SQL, r);
+            }
+
+            int inserted;
+            try (Statement s = conn.createStatement()) {
+                inserted = s.executeUpdate(INSERT_SQL);
+            }
+
+            conn.commit();
+
+            long skipped = staged - inserted;
+            if (skipped > 0) {
+                System.out.printf("Skipped %,d duplicate or malformed rows%n", skipped);
+            }
+            return inserted;
         } catch (SQLException | IOException e) {
-            conn.rollback();     // any failure → throw out the whole load, leave DB unchanged
+            conn.rollback();
             throw e;
         } finally {
             conn.setAutoCommit(true);
         }
-
-        if (skipped > 0) {
-            System.out.printf("Skipped %,d malformed rows%n", skipped);
-        }
-        return inserted;
-    }
-
-    // Binds one CSV row's fields to the 17 "?" placeholders in INSERT_SQL.
-    private static void bindRecord(PreparedStatement ps, CSVRecord rec) throws SQLException {
-        ps.setInt(1,    Integer.parseInt(rec.get("property_id").trim()));
-        ps.setString(2, nullIfBlank(rec.get("download_date")));
-        ps.setString(3, nullIfBlank(rec.get("council_name")));
-        setIntOrNull(ps, 4, rec.get("purchase_price"));
-        ps.setString(5, nullIfBlank(rec.get("address")));
-        ps.setString(6, nullIfBlank(rec.get("post_code")));
-        ps.setString(7, nullIfBlank(rec.get("property_type")));
-        ps.setString(8, nullIfBlank(rec.get("strata_lot_number")));
-        ps.setString(9, nullIfBlank(rec.get("property_name")));
-        setRealOrNull(ps, 10, rec.get("area"));
-        ps.setString(11, nullIfBlank(rec.get("area_type")));
-        ps.setString(12, nullIfBlank(rec.get("contract_date")));
-        ps.setString(13, nullIfBlank(rec.get("settlement_date")));
-        ps.setString(14, nullIfBlank(rec.get("zoning")));
-        ps.setString(15, nullIfBlank(rec.get("nature_of_property")));
-        ps.setString(16, nullIfBlank(rec.get("primary_purpose")));
-        ps.setString(17, nullIfBlank(rec.get("legal_description")));
-    }
-
-    private static void setIntOrNull(PreparedStatement ps, int idx, String s) throws SQLException {
-        if (s == null || s.isBlank()) {
-            ps.setNull(idx, Types.INTEGER);
-        } else {
-            ps.setLong(idx, Long.parseLong(s.trim()));
-        }
-    }
-
-    private static void setRealOrNull(PreparedStatement ps, int idx, String s) throws SQLException {
-        if (s == null || s.isBlank()) {
-            ps.setNull(idx, Types.REAL);
-        } else {
-            ps.setDouble(idx, Double.parseDouble(s.trim()));
-        }
-    }
-
-    // Empty CSV cells become SQL NULL, not empty strings. Cleaner queries downstream.
-    private static String nullIfBlank(String s) {
-        return (s == null || s.isBlank()) ? null : s;
     }
 }
