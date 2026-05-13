@@ -23,11 +23,11 @@ public class Main {
         .build();
 
     private static final String PATH_TO_CSV =
-        "/Users/kinseybellerose/Desktop/RealEstateServer/REDataLoader/src/main/java/org/example/nsw_property_data.csv";
+        "/Users/kinseybellerose/Desktop/SydneyExercises/RealEstateServer/REDataLoader/src/main/java/org/example/nsw_property_data.csv";
 
     // SQLite creates this file automatically on first connection — no separate "create database" step.
     private static final String DB_URL =
-        "jdbc:sqlite:/Users/kinseybellerose/Desktop/RealEstateServer/realestate.db";
+        "jdbc:sqlite:/Users/kinseybellerose/Desktop/SydneyExercises/RealEstateServer/realestate.db";
 
     private static final String CREATE_TABLE_SQL =
         "CREATE TABLE IF NOT EXISTS property (" +

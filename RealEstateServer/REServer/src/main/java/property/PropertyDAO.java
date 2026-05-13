@@ -14,7 +14,7 @@ public class PropertyDAO {
 
     // Same path the REDataLoader writes to. SQLite is just a file — both apps point at it.
     private static final String DB_URL =
-        "jdbc:sqlite:/Users/kinseybellerose/Desktop/RealEstateServer/realestate.db";
+        "jdbc:sqlite:/Users/kinseybellerose/Desktop/SydneyExercises/RealEstateServer/realestate.db";
 
     // HACK: GET /property and GET /property/prices have no pagination, but the table has
     // ~4.85M rows. Returning all of them would OOM the JVM and the HTTP client. We cap the
