@@ -1,6 +1,7 @@
-package property;
+package listing;
 
 import io.javalin.http.Context;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,7 +27,7 @@ public class ListingController {
         }
     }
 
-    // PUT /listing/{id}/price   body: { "price": 800000, "effectiveDate": "2025-02-15" }
+    // POST /listing/{id}/price   body: { "price": 800000, "effectiveDate": "2025-02-15" }
     public void changePrice(Context ctx, String listingIdStr) {
         long listingId = Long.parseLong(listingIdStr);
         Map<String, Object> body = ctx.bodyAsClass(Map.class);
@@ -34,9 +35,19 @@ public class ListingController {
         String effectiveDate = (String) body.get("effectiveDate");
 
         if (listings.addPrice(listingId, price, effectiveDate)) {
-            ctx.status(200).result("Price added");
+            ctx.status(201).result("Price added");
         } else {
             ctx.status(404).result("Listing not found");
+        }
+    }
+
+    // GET /listings
+    public void getAllListings(Context ctx) {
+        List<Listing> all = listings.getAllListings();
+        if (all.isEmpty()) {
+            ctx.status(404).result("No listings found");
+        } else {
+            ctx.json(all);
         }
     }
 

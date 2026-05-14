@@ -69,7 +69,7 @@ public class PropertyController {
     }
 
     // implements GET /property/postcode/{postcodeID}
-    public void findPropertyByPostCode(Context ctx, String postCode) {
+    public Property[] findPropertyByPostCode(Context ctx, String postCode) {
         List<Property> result = properties.getPropertiesByPostCode(postCode);
         if (result.isEmpty()) {
             ctx.html(errorHtml("No properties for postcode found"));
@@ -77,7 +77,9 @@ public class PropertyController {
         } else {
             ctx.html(propertyListHtml("Properties in Postcode " + postCode, result));
             ctx.status(200);
+            return result.toArray(new Property[result.size()]);
         }
+        return null;
     }
 
     private String propertyListHtml(String title, List<Property> props) {

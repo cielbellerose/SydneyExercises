@@ -21,7 +21,7 @@ public class Main {
         long startTime = System.currentTimeMillis();
 
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
-            int inserted = PropertyLoader.load(conn, csvFilePath);
+            int inserted = CsvLoader.load(conn, csvFilePath);
             long elapsedMs = System.currentTimeMillis() - startTime;
             System.out.printf("Loaded %,d records in %.2f seconds%n",
                               inserted, elapsedMs / 1000.0);

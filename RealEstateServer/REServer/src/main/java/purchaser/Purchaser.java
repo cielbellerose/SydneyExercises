@@ -1,4 +1,4 @@
-package property;
+package purchaser;
 
 import java.util.List;
 

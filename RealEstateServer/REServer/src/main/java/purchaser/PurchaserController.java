@@ -1,8 +1,9 @@
-package property;
+package purchaser;
 
 import io.javalin.http.Context;
+
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public class PurchaserController {
 
@@ -10,19 +11,29 @@ public class PurchaserController {
 
     public PurchaserController(PurchaserDAO purchasers) { this.purchasers = purchasers; }
 
+    // GET /purchasers
+    public void getAllPurchasers(Context ctx) {
+        List<Purchaser> all = purchasers.getAllPurchasers();
+        ctx.json(all);
+    }
+
     // POST /purchaser  body: { "email": "...", "name": "..." }
     public void createPurchaser(Context ctx) {
         Map<String, String> body = ctx.bodyAsClass(Map.class);
-        Optional<Long> id = purchasers.createPurchaser(body.get("email"), body.get("name"));
-        if (id.isPresent()) ctx.status(201).json(Map.of("purchaserId", id.get()));
+        Long id = purchasers.createPurchaser(body.get("email"), body.get("name"));
+        if (id != null) ctx.status(201).json(Map.of("purchaserId", id));
         else ctx.status(400).result("Could not create (email may already exist)");
     }
 
     // GET /purchaser/{id}
-    public void getPurchaser(Context ctx, String idStr) {
-        Optional<Purchaser> p = purchasers.getPurchaser(Long.parseLong(idStr));
-        if (p.isPresent()) ctx.json(p.get());
-        else ctx.status(404).result("Purchaser not found");
+    public Purchaser getPurchaser(Context ctx, String idStr) {
+        Purchaser p = purchasers.getPurchaser(Long.parseLong(idStr));
+        if (p == null) {
+            ctx.status(404).result("Purchaser not found");
+            return null;
+        }
+        ctx.json(p);
+        return p;
     }
 
     // POST /purchaser/{id}/interest   body: { "postcode": "2000" }
