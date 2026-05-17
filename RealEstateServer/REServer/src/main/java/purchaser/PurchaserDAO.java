@@ -98,7 +98,7 @@ public class PurchaserDAO {
                         "SELECT COUNT(*) FROM purchaser_interest WHERE purchaser_id = ?")) {
                     ps.setLong(1, purchaserId);
                     try (ResultSet rs = ps.executeQuery()) {
-                        rs.next();
+                        if (!rs.next()) throw new SQLException("COUNT query returned no row");
                         current = rs.getInt(1);
                     }
                 }

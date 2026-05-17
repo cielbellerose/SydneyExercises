@@ -2,20 +2,15 @@ package app;
 import io.javalin.Javalin;
 import listing.ListingDAO;
 import notifier.NotifyController;
-import notifier.NotifyDAO;
 import property.PropertyDAO;
 import purchaser.PurchaserDAO;
 import listing.ListingController;
 import property.PropertyController;
 import purchaser.PurchaserController;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 
 public class REServer {
-        private static final Logger LOG = LoggerFactory.getLogger(REServer.class);
 
         public static void main(String[] args) {
 
@@ -23,7 +18,6 @@ public class REServer {
             var properties = new PropertyDAO();
             var purchasers = new PurchaserDAO();
             var listings = new ListingDAO();
-            var notifications = new NotifyDAO();
 
             // API implementation
             PropertyController propertyHandler = new PropertyController(properties);

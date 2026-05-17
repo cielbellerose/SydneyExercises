@@ -38,7 +38,7 @@ public class ListingDAO {
                     ps.setString(2, listedDate);
                     ps.executeUpdate();
                     try (ResultSet keys = ps.getGeneratedKeys()) {
-                        keys.next();
+                        if (!keys.next()) throw new SQLException("No generated key returned for new listing");
                         listingId = keys.getLong(1);
                     }
                 }
