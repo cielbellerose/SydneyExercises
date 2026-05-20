@@ -22,6 +22,7 @@ public class PropertyServerMain {
 
         // =============== PROPERTIES ====================
         app.get("/property/{propertyID}", ctx -> propertyHandler.getPropertyByID(ctx, ctx.pathParam("propertyID")));
+        app.get("/property/{propertyID}/views", ctx -> propertyHandler.getPropertyViews(ctx, ctx.pathParam("propertyID")));
         app.get("/properties", propertyHandler::getAllProperties);
         app.post("/property", propertyHandler::createProperty);
         app.get("/property/postcode/{postcode}", ctx -> propertyHandler.findPropertyByPostCode(ctx, ctx.pathParam("postcode")));

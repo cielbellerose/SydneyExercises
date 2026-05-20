@@ -18,25 +18,17 @@ public class Gateway {
                 .build();
 
         Proxy proxy = new Proxy(http);
-        AnalyticsClient analytics = new AnalyticsClient(http, analyticsUrl);
 
         Javalin app = Javalin.create()
                 .get("/", ctx -> ctx.result("API Gateway is running"))
                 .start(port);
 
         // =============== PROPERTIES → property-server ====================
-        app.get("/property/{propertyID}", ctx -> {
-            String id = ctx.pathParam("propertyID");
-            proxy.forward(ctx, propertyUrl, "/property/" + id);
-            if (ctx.status().getCode() < 400) analytics.recordProperty(id);
-        });
+        app.get("/property/{propertyID}", ctx -> proxy.forward(ctx, propertyUrl, "/property/" + ctx.pathParam("propertyID")));
+        app.get("/property/{propertyID}/views", ctx -> proxy.forward(ctx, propertyUrl, "/property/" + ctx.pathParam("propertyID") + "/views"));
         app.get("/properties", ctx -> proxy.forward(ctx, propertyUrl, "/properties"));
         app.post("/property", ctx -> proxy.forward(ctx, propertyUrl, "/property"));
-        app.get("/property/postcode/{postcode}", ctx -> {
-            String pc = ctx.pathParam("postcode");
-            proxy.forward(ctx, propertyUrl, "/property/postcode/" + pc);
-            if (ctx.status().getCode() < 400) analytics.recordPostcode(pc);
-        });
+        app.get("/property/postcode/{postcode}", ctx -> proxy.forward(ctx, propertyUrl, "/property/postcode/" + ctx.pathParam("postcode")));
 
         // =============== LISTINGS → property-server ====================
         app.post("/listing", ctx -> proxy.forward(ctx, propertyUrl, "/listing"));
@@ -56,8 +48,6 @@ public class Gateway {
 
         // =============== NOTIFY + ANALYTICS → analytics-server ====================
         app.get("/notify/{purchaserId}", ctx -> proxy.forward(ctx, analyticsUrl, "/notify/" + ctx.pathParam("purchaserId")));
-        app.get("/analytics/property/{id}", ctx -> proxy.forward(ctx, analyticsUrl, "/analytics/property/" + ctx.pathParam("id")));
         app.get("/analytics/postcode/{postcode}", ctx -> proxy.forward(ctx, analyticsUrl, "/analytics/postcode/" + ctx.pathParam("postcode")));
-        app.get("/analytics/top", ctx -> proxy.forward(ctx, analyticsUrl, "/analytics/top"));
     }
 }

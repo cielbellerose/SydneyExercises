@@ -63,6 +63,29 @@ public class PropertyDAO {
         }
     }
 
+    public void incrementViewCount(String propertyID) {
+        final String sql = "UPDATE property SET view_count = view_count + 1 WHERE property_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, Integer.parseInt(propertyID));
+            ps.executeUpdate();
+        } catch (SQLException | NumberFormatException e) {
+            System.err.println("incrementViewCount failed: " + e.getMessage());
+        }
+    }
+
+    public Optional<Long> getViewCount(String propertyID) {
+        final String sql = "SELECT view_count FROM property WHERE property_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, Integer.parseInt(propertyID));
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(rs.getLong(1)) : Optional.empty();
+            }
+        } catch (SQLException | NumberFormatException e) {
+            System.err.println("getViewCount failed: " + e.getMessage());
+            return Optional.empty();
+        }
+    }
+
     public List<Property> getPropertiesByPostCode(String postCode) {
         final String sql =
             "SELECT property_id, post_code, purchase_price, for_sale " +

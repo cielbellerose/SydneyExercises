@@ -1,7 +1,7 @@
 package app;
 
-import analytics.AccessCountController;
-import analytics.AccessCountDAO;
+import analytics.PostcodeAnalyticsController;
+import analytics.PostcodeAnalyticsDAO;
 import io.javalin.Javalin;
 import notifier.NotifyController;
 
@@ -19,8 +19,8 @@ public class AnalyticsServerMain {
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
 
-        AccessCountDAO dao = new AccessCountDAO();
-        AccessCountController access = new AccessCountController(dao);
+        PostcodeAnalyticsDAO dao = new PostcodeAnalyticsDAO();
+        PostcodeAnalyticsController postcode = new PostcodeAnalyticsController(dao);
         NotifyController notify = new NotifyController(http, purchasersUrl, propertyUrl);
 
         Javalin app = Javalin.create()
@@ -28,10 +28,6 @@ public class AnalyticsServerMain {
                 .start(port);
 
         app.get("/notify/{purchaserId}", ctx -> notify.notifyPurchaser(ctx, ctx.pathParam("purchaserId")));
-
-        app.post("/analytics/access", access::record);
-        app.get("/analytics/property/{id}", ctx -> access.propertyHits(ctx, ctx.pathParam("id")));
-        app.get("/analytics/postcode/{postcode}", ctx -> access.postcodeHits(ctx, ctx.pathParam("postcode")));
-        app.get("/analytics/top", access::top);
+        app.get("/analytics/postcode/{postcode}", ctx -> postcode.postcodeHits(ctx, ctx.pathParam("postcode")));
     }
 }

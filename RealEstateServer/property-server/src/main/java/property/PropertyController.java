@@ -49,7 +49,18 @@ public class PropertyController {
     public void getPropertyByID(Context ctx, String id) {
         Optional<Property> property = properties.getPropertyById(id);
         if (property.isPresent()) {
+            properties.incrementViewCount(id);
             ctx.json(property.get());
+        } else {
+            ctx.status(404).json(Map.of("error", "Property not found"));
+        }
+    }
+
+    // GET /property/{propertyID}/views
+    public void getPropertyViews(Context ctx, String id) {
+        Optional<Long> views = properties.getViewCount(id);
+        if (views.isPresent()) {
+            ctx.json(Map.of("propertyId", id, "views", views.get()));
         } else {
             ctx.status(404).json(Map.of("error", "Property not found"));
         }
