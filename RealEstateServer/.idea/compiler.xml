@@ -7,9 +7,14 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="RealEstate" />
-        <module name="RealEstateServer" />
-        <module name="REServer" />
+        <module name="gateway" />
+        <module name="property-server" />
+        <module name="purchasers-server" />
+        <module name="analytics-server" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="REServer" target="15" />
+    </bytecodeTargetLevel>
   </component>
 </project>

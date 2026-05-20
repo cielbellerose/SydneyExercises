@@ -1,4 +1,5 @@
-.PHONY: up down reset psql migrate baseline build load server clean
+.PHONY: up down reset psql migrate baseline build load clean \
+        run-property run-purchasers run-analytics run-gateway
 
 up:
 	docker compose up -d
@@ -24,14 +25,23 @@ baseline:
 
 build:
 	cd REDataLoader && mvn -q package
-	cd REServer && mvn -q package
+	mvn -q -f pom.xml package
 
 load:
 	cd REDataLoader && mvn -q compile exec:java -Dexec.mainClass=org.example.Main
 
-server:
-	cd REServer && mvn -q compile exec:java -Dexec.mainClass=app.REServer
+run-property:
+	java -jar property-server/target/property-server-1.0-SNAPSHOT-jar-with-dependencies.jar
+
+run-purchasers:
+	java -jar purchasers-server/target/purchasers-server-1.0-SNAPSHOT-jar-with-dependencies.jar
+
+run-analytics:
+	java -jar analytics-server/target/analytics-server-1.0-SNAPSHOT-jar-with-dependencies.jar
+
+run-gateway:
+	java -jar gateway/target/gateway-1.0-SNAPSHOT-jar-with-dependencies.jar
 
 clean:
 	cd REDataLoader && mvn -q clean
-	cd REServer && mvn -q clean
+	mvn -q -f pom.xml clean
