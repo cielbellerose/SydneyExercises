@@ -157,7 +157,47 @@ Configuration env vars (with defaults):
   once and ACKed. Adding a `sent_notifications` table would be the next step
   if we wanted automated assertions in an integration test.
 
-## Verification
+## Testing
 
-Test plan and code-quality re-run (PMD / equivalent) to be added once the
-end-to-end run has been demonstrated.
+`property-server/src/test/java/messaging/EventFlowTest.java` is a JUnit 5
+integration test that verifies the four `PropertyEvent`s are published with
+the correct payload. The test subscribes directly to the `property.events`
+queue and asserts the JSON of each emitted event.
+
+**Prerequisites**
+
+- `make up` (Postgres + RabbitMQ running)
+- `make run-property` (property-server on `:7071`)
+- `notification-server` MUST be stopped — its `EventConsumer` reads the same
+  queue and would race the test for messages. Stop it from IntelliJ (or
+  `kill <pid>`) before running.
+
+**Run**
+
+```bash
+mvn -pl property-server test
+```
+
+**What it covers**
+
+| Test | Trigger | Asserts |
+|---|---|---|
+| `newListingEmitsEvent`   | `POST /property` (`forSale=true`)        | `NEW_LISTING` event with matching `propertyId`, `postcode`, `price`, `forSale=true` |
+| `statusChangeEmitsEvent` | `POST /property/{id}/forSale` (`false`)  | `STATUS_CHANGE` event with `forSale=false` |
+| `priceChangeEmitsEvent`  | `POST /listing/{id}/price`               | `PRICE_CHANGE` event with the new `price` |
+| `hotPropertyEmitsEvent`  | `GET /property/{id}` (for-sale property) | `HOT_PROPERTY` event with `viewCount >= 1` |
+
+The test inserts a dedicated test purchaser (`purchaser_id=90001`) with an
+interest in test postcode `9999` in `@BeforeAll` and removes it in `@AfterAll`.
+Each test uses a unique property ID (`9999001`–`9999004`) in postcode `9999`
+so it's isolated from any seeded data.
+
+**Scope limitation:** the test stops at the `property.events` boundary — it
+verifies property-server emits the right event. It does not assert that
+notification-server fans the event out to `purchaser.messages`. That second
+hop is exercised manually by running `make run-notification` and watching the
+printer output (see "Running it" above).
+
+## Code-quality re-run
+
+(PMD / equivalent results to be added after the end-to-end run.)
