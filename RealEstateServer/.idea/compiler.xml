@@ -8,6 +8,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="RealEstate" />
         <module name="gateway" />
+        <module name="notification-server" />
         <module name="property-server" />
         <module name="purchasers-server" />
         <module name="analytics-server" />

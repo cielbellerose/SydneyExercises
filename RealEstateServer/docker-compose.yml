@@ -11,5 +11,12 @@ services:
     volumes:
       - realestate-pgdata:/var/lib/postgresql/data
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: realestate-rabbit
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
 volumes:
   realestate-pgdata:

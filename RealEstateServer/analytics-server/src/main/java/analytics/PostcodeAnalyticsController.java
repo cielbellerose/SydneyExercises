@@ -18,4 +18,11 @@ public class PostcodeAnalyticsController {
                 "postcode", postcode,
                 "interestedPurchasers", dao.interestedPurchasers(postcode)));
     }
+
+    // GET /analytics/postcode/{postcode}/purchasers
+    public void purchasersForPostcode(Context ctx, String postcode) {
+        ctx.json(Map.of(
+                "postcode", postcode,
+                "purchasers", dao.purchasersForPostcode(postcode)));
+    }
 }

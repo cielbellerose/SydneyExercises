@@ -5,6 +5,10 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class PostcodeAnalyticsDAO {
 
@@ -28,5 +32,29 @@ public class PostcodeAnalyticsDAO {
             System.err.println("interestedPurchasers failed: " + e.getMessage());
             return 0L;
         }
+    }
+
+    public List<Map<String, Object>> purchasersForPostcode(String postcode) {
+        final String sql =
+            "SELECT p.purchaser_id, p.email, p.name " +
+            "FROM purchaser p JOIN purchaser_interest i ON p.purchaser_id = i.purchaser_id " +
+            "WHERE i.postcode = ?";
+        List<Map<String, Object>> out = new ArrayList<>();
+        try (Connection conn = connect();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, postcode);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("purchaserId", rs.getLong("purchaser_id"));
+                    row.put("email", rs.getString("email"));
+                    row.put("name", rs.getString("name"));
+                    out.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("purchasersForPostcode failed: " + e.getMessage());
+        }
+        return out;
     }
 }

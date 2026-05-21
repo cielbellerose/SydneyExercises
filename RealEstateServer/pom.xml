@@ -14,6 +14,7 @@
         <module>purchasers-server</module>
         <module>analytics-server</module>
         <module>gateway</module>
+        <module>notification-server</module>
     </modules>
 
     <properties>
@@ -25,5 +26,6 @@
         <postgres.version>42.7.4</postgres.version>
         <junit.version>5.10.2</junit.version>
         <mockito.version>5.14.2</mockito.version>
+        <rabbitmq.version>5.21.0</rabbitmq.version>
     </properties>
 </project>

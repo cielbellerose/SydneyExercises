@@ -1,5 +1,5 @@
 .PHONY: up down reset psql migrate baseline build load clean \
-        run-property run-purchasers run-analytics run-gateway
+        run-property run-purchasers run-analytics run-gateway run-notification
 
 up:
 	docker compose up -d
@@ -41,6 +41,9 @@ run-analytics:
 
 run-gateway:
 	java -jar gateway/target/gateway-1.0-SNAPSHOT-jar-with-dependencies.jar
+
+run-notification:
+	java -jar notification-server/target/notification-server-1.0-SNAPSHOT-jar-with-dependencies.jar
 
 clean:
 	cd REDataLoader && mvn -q clean

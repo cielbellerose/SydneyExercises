@@ -1,6 +1,10 @@
 package listing;
 
 import io.javalin.http.Context;
+import messaging.EventPublisher;
+import messaging.PropertyEvent;
+import property.Property;
+import property.PropertyDAO;
 
 import java.util.List;
 import java.util.Map;
@@ -9,8 +13,14 @@ import java.util.Optional;
 public class ListingController {
 
     private final ListingDAO listings;
+    private final PropertyDAO properties;
+    private final EventPublisher events;
 
-    public ListingController(ListingDAO listings) { this.listings = listings; }
+    public ListingController(ListingDAO listings, PropertyDAO properties, EventPublisher events) {
+        this.listings = listings;
+        this.properties = properties;
+        this.events = events;
+    }
 
     // POST /listing  body: { "propertyId": 123, "listedDate": "2025-01-15", "initialPrice": 850000 }
     public void createListing(Context ctx) {
@@ -35,6 +45,11 @@ public class ListingController {
         String effectiveDate = (String) body.get("effectiveDate");
 
         if (listings.addPrice(listingId, price, effectiveDate)) {
+            listings.getListing(listingId).ifPresent(l -> {
+                Optional<Property> prop = properties.getPropertyById(String.valueOf(l.propertyId));
+                prop.ifPresent(p ->
+                    events.publish(PropertyEvent.priceChange(p.propertyID, p.postcode, price)));
+            });
             ctx.status(201).result("Price added");
         } else {
             ctx.status(404).result("Listing not found");
@@ -66,7 +81,14 @@ public class ListingController {
 
     // DELETE /listing/{id}  — withdraw
     public void withdraw(Context ctx, String listingIdStr) {
-        if (listings.withdrawListing(Long.parseLong(listingIdStr))) {
+        long listingId = Long.parseLong(listingIdStr);
+        Optional<Listing> before = listings.getListing(listingId);
+        if (listings.withdrawListing(listingId)) {
+            before.ifPresent(l -> {
+                Optional<Property> prop = properties.getPropertyById(String.valueOf(l.propertyId));
+                prop.ifPresent(p ->
+                    events.publish(PropertyEvent.statusChange(p.propertyID, p.postcode, false)));
+            });
             ctx.status(200).result("Listing withdrawn");
         } else {
             ctx.status(404).result("Listing not found");

@@ -29,5 +29,6 @@ public class AnalyticsServerMain {
 
         app.get("/notify/{purchaserId}", ctx -> notify.notifyPurchaser(ctx, ctx.pathParam("purchaserId")));
         app.get("/analytics/postcode/{postcode}", ctx -> postcode.postcodeHits(ctx, ctx.pathParam("postcode")));
+        app.get("/analytics/postcode/{postcode}/purchasers", ctx -> postcode.purchasersForPostcode(ctx, ctx.pathParam("postcode")));
     }
 }

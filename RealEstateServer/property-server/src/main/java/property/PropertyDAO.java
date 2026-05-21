@@ -63,6 +63,18 @@ public class PropertyDAO {
         }
     }
 
+    public boolean setForSale(String propertyID, boolean forSale) {
+        final String sql = "UPDATE property SET for_sale = ? WHERE property_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setBoolean(1, forSale);
+            ps.setInt(2, Integer.parseInt(propertyID));
+            return ps.executeUpdate() == 1;
+        } catch (SQLException | NumberFormatException e) {
+            System.err.println("setForSale failed: " + e.getMessage());
+            return false;
+        }
+    }
+
     public void incrementViewCount(String propertyID) {
         final String sql = "UPDATE property SET view_count = view_count + 1 WHERE property_id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
